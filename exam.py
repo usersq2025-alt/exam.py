@@ -384,7 +384,7 @@ elif st.session_state.page == "اختبار جديد":
         q_labels = []
         for i in range(4):
             ded_i = sum(ERROR_TYPES[e]["points"] for e in st.session_state.ex_qs[i]["errors"] if e in ERROR_TYPES)
-            q_labels.append(f"جزء {i+1}" + (f" (−{ded_i})" if ded_i else ""))
+            q_labels.append(f"السؤال {i+1}" + (f" (−{ded_i})" if ded_i else ""))
 
         tabs = st.tabs(q_labels)
         for i, tab in enumerate(tabs):
@@ -417,10 +417,10 @@ elif st.session_state.page == "اختبار جديد":
                     st.markdown(err_html, unsafe_allow_html=True)
                     if st.button("🗑 مسح آخر خطأ", key=f"undo_{i}"):
                         st.session_state.ex_qs[i]["errors"].pop(); st.rerun()
-                    if st.button("🗑🗑 مسح كل أخطاء هذا الجزء", key=f"clr_{i}"):
+                    if st.button("🗑🗑 مسح كل أخطاء هذا السؤال", key=f"clr_{i}"):
                         st.session_state.ex_qs[i]["errors"] = []; st.rerun()
                 else:
-                    st.success("لا أخطاء في هذا الجزء ✓")
+                    st.success("لا أخطاء في هذا السؤال ✓")
 
         st.markdown("---")
         c1, c2 = st.columns([1, 2])
@@ -470,7 +470,7 @@ elif st.session_state.page == "اختبار جديد":
             st.markdown(f"""
             <div style="background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:6px;
                         border:1px solid #eee;border-right:3px solid {'#E24B4A' if q['errors'] else '#3B6D11'}">
-              <strong>الجزء {i+1}{pg_txt}</strong><br>
+              <strong>السؤال {i+1}{pg_txt}</strong><br>
               <div style="margin-top:6px">{tags}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -658,7 +658,7 @@ elif st.session_state.page == "السجل":
                     st.markdown(f"""
                     <div style="background:#fafafa;padding:8px 12px;border-radius:6px;
                                 margin-bottom:5px;border-right:3px solid {'#E24B4A' if q.get('errors') else '#3B6D11'}">
-                      <strong>الجزء {i+1}{pg_t}:</strong> {tags}
+                      <strong>السؤال {i+1}{pg_t}:</strong> {tags}
                     </div>
                     """, unsafe_allow_html=True)
 
