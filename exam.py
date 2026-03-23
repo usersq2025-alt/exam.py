@@ -89,6 +89,73 @@ def fetch_all_students():
     """جلب كافة الطالبات"""
     with get_db_connection() as conn:
         return conn.execute("SELECT * FROM students ORDER BY name").fetchall()
+    # ─── 5. تهيئة قاعدة البيانات عند بدء التشغيل ──────────────────────────────
+
+def init_db():
+    """إنشاء الجداول وتحديثها لدعم حقل المواليد"""
+    conn = get_db_connection()
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS students (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            branch TEXT DEFAULT '',
+            birth_year TEXT,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS teachers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS exams (
+            id TEXT PRIMARY KEY,
+            student_id TEXT NOT NULL,
+            student_name TEXT NOT NULL,
+            student_branch TEXT DEFAULT '',
+            birth_year TEXT,
+            teacher TEXT DEFAULT '',
+            cycle_year TEXT NOT NULL,
+            cycle_num INTEGER NOT NULL,
+            exam_date TEXT NOT NULL,
+            coverage TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            deductions INTEGER NOT NULL,
+            pass_fail INTEGER NOT NULL,
+            questions TEXT NOT NULL,
+            saved_at TEXT NOT NULL
+        );
+    """)
+    # محاولة إضافة عمود المواليد للجداول القديمة إن لم يكن موجوداً
+    try: conn.execute("ALTER TABLE students ADD COLUMN birth_year TEXT")
+    except: pass
+    try: conn.execute("ALTER TABLE exams ADD COLUMN birth_year TEXT")
+    except: pass
+    conn.commit()
+    conn.close()
+
+# تشغيل التهيئة فوراً
+init_db()
+
+# ─── 6. المعالج الذكي للبيانات المنسوخة (Parser) ──────────────────────────
+
+def parse_bulk_text(raw_text):
+    """تحليل النص المنسوخ من الجداول (7.00 م 120671 سنا محمد...)"""
+    lines = raw_text.strip().split('\n')
+    extracted = []
+    for line in lines:
+        if not line.strip(): continue
+        # التقسيم بناءً على علامات التبويب أو المسافات الكبيرة
+        parts = [p.strip() for p in re.split(r'\t| {2,}', line) if p.strip()]
+        if len(parts) >= 8:
+            extracted.append({
+                "time": parts[0],
+                "id": parts[2],
+                "name": parts[3],
+                "coverage": parts[4],
+                "country": parts[5],
+                "birth_year": parts[6],
+                "teacher_ref": parts[-1]
+            })
+    return extracted
     
 # ─── 3. إعداد قاعدة البيانات (SQLite) ──────────────────────────────────────
 DB_NAME = "maqraa_smart.db"
@@ -304,7 +371,53 @@ def initialize_session_state():
 
 # تشغيل التهيئة
 initialize_session_state()
+# ─── 7. إدارة حالة الجلسة (ذاكرة البرنامج) ────────────────────────────────
 
+def initialize_state():
+    """تجهيز المتغيرات التي تحفظ البيانات أثناء التنقل بين الصفحات"""
+    defaults = {
+        "page": "الرئيسية",
+        "exam_step": 1,
+        "queue": [],
+        "bulk_teacher": "",
+        "bulk_cycle": "الأولى",
+        "ex_sid": "", "ex_snm": "", "ex_sbr": "", "ex_birth": "",
+        "ex_teacher": "", "ex_cy": str(datetime.now().year),
+        "ex_cn": 1, "ex_dt": date.today(), "ex_co": "",
+        "ex_qs": [{"pg": "", "errors": []} for _ in range(4)],
+        "exam_result": None,
+        "hist_filter": "الكل", "hist_search": "",
+    }
+    for key, val in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = val
+
+initialize_state()
+
+# ─── 8. الهيدر ونظام القوائم (Navigation) ──────────────────────────────────
+
+st.markdown("""
+<div class="hdr">
+  <h1>🕌 مقرأة تسميع القرآن الذكية</h1>
+  <p>نظام اللجنة الذكي والمتابعة الفورية لعام 2026</p>
+</div>
+""", unsafe_allow_html=True)
+
+# أزرار التنقل العلوية
+pages_list = ["الرئيسية", "استيراد ذكي", "اللجنة والانتظار", "الطالبات", "السجل", "الإحصائيات"]
+icons_list  = ["🏠", "📥", "⏳", "👩", "📋", "📊"]
+
+nav_cols = st.columns(len(pages_list))
+for i, (col, pg, ic) in enumerate(zip(nav_cols, pages_list, icons_list)):
+    with col:
+        if st.button(f"{ic}\n{pg}", key=f"nav_{pg}",
+                     type="primary" if st.session_state.page == pg else "secondary",
+                     use_container_width=True):
+            st.session_state.page = pg
+            if pg == "الرئيسية": st.session_state.exam_result = None
+            st.rerun()
+
+st.markdown("---")
 # ─── 8. الهيدر والقائمة الجانبية ──────────────────────────────────────────
 st.markdown("""
 <div class="hdr">
