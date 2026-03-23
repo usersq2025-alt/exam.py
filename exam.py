@@ -98,6 +98,35 @@ def get_db_connection():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
+    # ─── دالة جلب الاختبارات (الحل للمشكلة) ──────────────────────────────────────
+def get_exams(limit=None):
+    """
+    جلب الاختبارات من قاعدة البيانات. 
+    إذا تم تحديد limit يجلب عدداً معيناً، وإذا لم يحدد يجلب الكل.
+    """
+    query = "SELECT * FROM exams ORDER BY saved_at DESC"
+    if limit:
+        query += f" LIMIT {limit}"
+    
+    with get_db_connection() as conn:
+        return conn.execute(query).fetchall()
+
+# ─── دالة تحويل التاريخ للعرض (Helper Function) ─────────────────────────────
+def fmt_date(ds):
+    """تحويل صيغة التاريخ من قاعدة البيانات إلى صيغة مقروءة (يوم/شهر/سنة)"""
+    if not ds: return ""
+    try: 
+        return datetime.strptime(str(ds), "%Y-%m-%d").strftime("%d/%m/%Y")
+    except: 
+        return str(ds)
+
+# ─── دالة عرض أوسمة الأخطاء (UI Helper) ─────────────────────────────────────
+def error_tags_html(errors):
+    """تحويل قائمة الأخطاء المسجلة إلى كود HTML ليظهر بشكل أوسمة ملونة"""
+    return " ".join(
+        f'<span class="{ERROR_TYPES[e]["tag"]}">{ERROR_TYPES[e]["label"]}</span>'
+        for e in errors if e in ERROR_TYPES
+    ) or '<span style="color:#aaa;font-size:12px">لا أخطاء</span>'
 
 def init_db():
     """إنشاء الجداول الأساسية وتحديثها إذا كانت موجودة مسبقاً"""
