@@ -6,7 +6,7 @@ import re
 import pandas as pd
 from datetime import datetime, date
 
-# ─── 1. إعدادات الصفحة الأساسية ──────────────────────────────────────────
+# ─── 1. إعدادات الصفحة ────────────────────────────────────────────────────
 st.set_page_config(
     page_title="مقرأة تسميع القرآن الكريم",
     page_icon="🕌",
@@ -14,82 +14,82 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ─── 2. هندسة التنسيق (CSS) بالأرجواني والذهبي ──────────────────────────────
-# تم اختيار الألوان بناءً على ذوقك في الجرافيك (الأرجواني #4B0082 والذهبي #D4AF37)
+# ─── 2. الثوابت الأساسية (يجب أن تسبق أي دالة تستخدمها) ──────────────────────
+# وضعناها هنا في الأعلى ليراها البرنامج قبل أن يبدأ بالعمل
+ERROR_TYPES = {
+    "ht": {"label": "حفظ — تنبيه",   "points": 1, "tag": "tag-ht"},
+    "hr": {"label": "حفظ — رد",       "points": 2, "tag": "tag-hr"},
+    "tt": {"label": "تشكيل — تنبيه", "points": 2, "tag": "tag-tt"},
+    "tr": {"label": "تشكيل — رد",    "points": 4, "tag": "tag-tr"},
+}
+
+CYCLE_NAMES = ["الأولى", "الثانية", "الثالثة", "الرابعة"]
+
+COVERAGE_OPTIONS = [
+    "جزء واحد", "جزئين", "3 أجزاء", "5 أجزاء",
+    "10 أجزاء", "15 جزءاً", "20 جزءاً", "25 جزءاً",
+    "القرآن كاملاً (30 جزءاً)"
+]
+
+DB_NAME = "maqraa_smart.db"
+
+# ─── 3. التنسيق الجمالي (CSS) ─────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
-
-/* الإعدادات العامة للخط والاتجاه */
-html, body, [class*="css"] {
-    font-family: 'Cairo', sans-serif !important;
-    direction: rtl;
-    text-align: right;
-}
-
-h1, h2, h3, p { font-family: 'Cairo', sans-serif !important; }
-
-/* تصميم الهيدر (Header) */
-.hdr {
-    background: linear-gradient(135deg, #4B0082, #6A0DAD);
-    padding: 25px;
-    border-radius: 15px;
-    text-align: center;
-    margin-bottom: 30px;
-    border-bottom: 5px solid #D4AF37;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-}
-.hdr h1 { color: #D4AF37; font-size: 28px; margin: 0; font-weight: 700; }
-.hdr p  { color: #E6E6FA; font-size: 15px; margin-top: 8px; }
-
-/* تصميم بطاقات الإحصائيات (Metric Cards) */
-.metric-card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-    border: 1px solid #E0EAD0;
-    box-shadow: 0 2px 10px rgba(75, 0, 130, 0.05);
-    transition: transform 0.3s ease;
-}
-.metric-card:hover { transform: translateY(-5px); }
-.metric-num  { font-size: 36px; font-weight: 700; color: #4B0082; }
-.metric-lbl  { font-size: 14px; color: #666; margin-top: 5px; }
-
-/* تصميم صفوف قائمة الانتظار والاختبارات */
-.exam-row {
-    background: #fff;
-    border-right: 6px solid #4B0082;
-    border-radius: 10px;
-    padding: 15px 20px;
-    margin-bottom: 12px;
-    border-top: 1px solid #eee;
-    border-bottom: 1px solid #eee;
-    border-left: 1px solid #eee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.exam-row.fail { border-right-color: #E24B4A; }
-
-/* أوسمة الحالة (Badges) */
-.badge-pass { background:#E8F5E9; color:#2E7D32; padding:5px 15px; border-radius:20px; font-size:14px; font-weight:600; }
-.badge-fail { background:#FFEBEE; color:#C62828; padding:5px 15px; border-radius:20px; font-size:14px; font-weight:600; }
-
-/* وسوم الأخطاء (Error Tags) */
-.tag-ht { background:#FFF9C4; color:#F57F17; padding:4px 10px; border-radius:6px; font-size:12px; margin:3px; display:inline-block; border: 1px solid #FBC02D; }
-.tag-hr { background:#FFF3E0; color:#BF360C; padding:4px 10px; border-radius:6px; font-size:12px; margin:3px; display:inline-block; border: 1px solid #FF9800; }
-.tag-tt { background:#E3F2FD; color:#1565C0; padding:4px 10px; border-radius:6px; font-size:12px; margin:3px; display:inline-block; border: 1px solid #2196F3; }
-.tag-tr { background:#FCE4EC; color:#B71C1C; padding:4px 10px; border-radius:6px; font-size:12px; margin:3px; display:inline-block; border: 1px solid #F06292; }
-
-/* الأزرار المخصصة */
-.stButton>button {
-    border-radius: 8px;
-    font-weight: 600;
-    transition: all 0.3s;
-}
+html, body, [class*="css"] { font-family: 'Cairo', sans-serif !important; direction: rtl; text-align: right; }
+.hdr { background: linear-gradient(135deg, #4B0082, #6A0DAD); padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 25px; border-bottom: 5px solid #D4AF37; }
+.hdr h1 { color: #D4AF37; font-size: 26px; margin: 0; }
+.hdr p  { color: #E6E6FA; font-size: 14px; }
+.metric-card { background: #fff; border-radius: 12px; padding: 15px; text-align: center; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+.metric-num  { font-size: 32px; font-weight: 700; color: #4B0082; }
+.exam-row { background: #fff; border-right: 5px solid #4B0082; border-radius: 10px; padding: 15px; margin-bottom: 10px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.badge-pass { background:#E8F5E9; color:#2E7D32; padding:4px 12px; border-radius:20px; font-size:13px; font-weight:600; }
+.badge-fail { background:#FFEBEE; color:#C62828; padding:4px 12px; border-radius:20px; font-size:13px; font-weight:600; }
+.tag-ht { background:#FFF9C4; color:#F57F17; padding:3px 8px; border-radius:6px; font-size:12px; margin:2px; display:inline-block; border: 1px solid #FBC02D; }
+.tag-hr { background:#FFF3E0; color:#BF360C; padding:3px 8px; border-radius:6px; font-size:12px; margin:2px; display:inline-block; border: 1px solid #FF9800; }
+.tag-tt { background:#E3F2FD; color:#1565C0; padding:3px 8px; border-radius:6px; font-size:12px; margin:2px; display:inline-block; border: 1px solid #2196F3; }
+.tag-tr { background:#FCE4EC; color:#B71C1C; padding:3px 8px; border-radius:6px; font-size:12px; margin:2px; display:inline-block; border: 1px solid #F06292; }
 </style>
 """, unsafe_allow_html=True)
+# ─── 4. الدوال المساعدة (Helpers) ─────────────────────────────────────────
+
+def error_tags_html(errors):
+    """تحويل قائمة الأخطاء إلى أوسمة ملونة (تعريفها هنا يمنع خطأ NameError)"""
+    if not errors:
+        return '<span style="color:#aaa;font-size:12px">لا أخطاء</span>'
+    html_list = []
+    for e in errors:
+        if e in ERROR_TYPES:
+            tag = ERROR_TYPES[e]["tag"]
+            lbl = ERROR_TYPES[e]["label"]
+            html_list.append(f'<span class="{tag}">{lbl}</span>')
+    return " ".join(html_list)
+
+def fmt_date(d_str):
+    """تحويل التاريخ لصيغة مقروءة"""
+    if not d_str: return ""
+    try: return datetime.strptime(str(d_str), "%Y-%m-%d").strftime("%d/%m/%Y")
+    except: return str(d_str)
+
+def get_db_connection():
+    """الاتصال بقاعدة البيانات"""
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def get_exams(limit=None):
+    """دالة جلب الاختبارات (حل مشكلة NameError get_exams)"""
+    query = "SELECT * FROM exams ORDER BY saved_at DESC"
+    if limit: query += f" LIMIT {limit}"
+    with get_db_connection() as conn:
+        return conn.execute(query).fetchall()
+
+def fetch_all_students():
+    """جلب كافة الطالبات"""
+    with get_db_connection() as conn:
+        return conn.execute("SELECT * FROM students ORDER BY name").fetchall()
+    
 # ─── 3. إعداد قاعدة البيانات (SQLite) ──────────────────────────────────────
 DB_NAME = "maqraa_smart.db"
 
